@@ -19,11 +19,6 @@ const (
 )
 const bufferSize = 8
 
-var stateName = map[ParserState]string{
-	initialized: "initialized",
-	done:        "done",
-}
-
 type Request struct {
 	RequestLine RequestLine
 	Headers     map[string]string
@@ -63,28 +58,35 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		state: initialized,
 	}
 
-	buf := make([]byte, 0, bufferSize)
+	buf := make([]byte, bufferSize, bufferSize)
+	buffLen := 0
 
-	for {
-		n, err := reader.Read(buf[len(buf):cap(buf)])
-		buf = buf[:len(buf)+n]
-		if len(buf) == cap(buf) {
-			buf = append(buf, 0)[:len(buf)]
+	for r.state != done {
+		n, err := reader.Read(buf[buffLen:])
+		if err != nil {
+			if err == io.EOF {
+				r.state = done
+				break
+			}
+			return nil, err
 		}
 
-		if err == io.EOF {
-			r.state = done
-			break
+		buffLen += n
+
+		if len(buf[:buffLen]) == cap(buf) {
+			tmp := make([]byte, len(buf)*2, cap(buf)*2)
+			copy(tmp, buf[:])
+			buf = tmp
 		}
 
-		_, err = r.parse(buf)
+		n, err = r.parse(buf[:buffLen])
 		if err != nil {
 			return nil, err
 		}
 
-		if r.state == done {
-			break
-		}
+		// copy(buf, buf[buffLen:n])
+		// buffLen -= n
+		// buf = buf[]
 	}
 
 	return r, nil
@@ -102,14 +104,12 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 		return nil, 0, ErrWrongFormat
 	}
 
-	// check http method
 	method := rlPart[0]
 	ok := isValidHttpMethod(method)
 	if !ok {
 		return nil, 0, ErrWrongHttpMethod
 	}
 
-	// check http version
 	version := bytes.Split(rlPart[2], []byte("/"))
 	if len(version) != 2 || string(version[1]) != "1.1" {
 		return nil, 0, ErrWrongFormat
