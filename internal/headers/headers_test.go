@@ -28,6 +28,21 @@ func TestHeadersParse(t *testing.T) {
 	assert.Equal(t, 31, n)
 	assert.False(t, done)
 
+	// Test: Valid header with multiple values
+	headers = NewHeaders()
+	n, done, err = headers.Parse([]byte("Set-Person: lane-loves-go\r\n\r\n"))
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "lane-loves-go", headers["set-person"])
+	assert.Equal(t, 27, n)
+	assert.False(t, done)
+	n, done, err = headers.Parse([]byte("Set-Person: prime-loves-zig\r\n\r\n"))
+	require.NoError(t, err)
+	require.NotNil(t, headers)
+	assert.Equal(t, "lane-loves-go, prime-loves-zig", headers["set-person"])
+	assert.Equal(t, 29, n)
+	assert.False(t, done)
+
 	// Test: Invalid spacing header
 	headers = NewHeaders()
 	data = []byte("       Host : localhost:42069       \r\n\r\n")

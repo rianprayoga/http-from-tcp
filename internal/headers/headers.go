@@ -43,9 +43,16 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 		return 0, false, ErrInvalidKey
 	}
 
-	value := bytes.Trim(line[i+1:], " ")
+	value := string(bytes.Trim(line[i+1:], " "))
 
-	h[string(bytes.ToLower(key))] = string(value)
+	lowercaseKey := string(bytes.ToLower(key))
+
+	exstValue, ok := h[lowercaseKey]
+	if ok {
+		h[lowercaseKey] = exstValue + ", " + value
+	} else {
+		h[lowercaseKey] = value
+	}
 
 	return eol + 2, false, nil
 }
