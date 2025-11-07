@@ -2,14 +2,14 @@ package request
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 	"io"
 	"slices"
 )
 
-var ErrWrongFormat = errors.New("mismatch format in request line")
-var ErrParsedAlready = errors.New("data  already parsed")
-var ErrWrongHttpMethod = errors.New("mismatch format in request line")
+var ErrWrongFormat = fmt.Errorf("mismatch format in request line")
+var ErrParsedAlready = fmt.Errorf("data  already parsed")
+var ErrWrongHttpMethod = fmt.Errorf("mismatch format in request line")
 
 type ParserState int
 
