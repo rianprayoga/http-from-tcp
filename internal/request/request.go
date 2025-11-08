@@ -2,7 +2,9 @@ package request
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"httpfromtcp/internal/headers"
 	"io"
 	"slices"
 )
@@ -10,18 +12,20 @@ import (
 var ErrWrongFormat = fmt.Errorf("mismatch format in request line")
 var ErrParsedAlready = fmt.Errorf("data  already parsed")
 var ErrWrongHttpMethod = fmt.Errorf("mismatch format in request line")
+var CRLF = "\r\n"
 
 type ParserState int
 
 const (
-	initialized ParserState = iota
-	done
+	requestLineState ParserState = iota
+	headersState
+	doneState
 )
 const bufferSize = 8
 
 type Request struct {
 	RequestLine RequestLine
-	Headers     map[string]string
+	Headers     headers.Headers
 	Body        []byte
 	state       ParserState
 }
@@ -34,59 +38,74 @@ type RequestLine struct {
 
 func (r *Request) parse(data []byte) (int, error) {
 
-	if r.state == done {
+	switch state := r.state; state {
+	case doneState:
 		return 0, ErrParsedAlready
-	}
-
-	rl, n, err := parseRequestLine(data)
-	if err != nil {
-		return 0, err
-	}
-
-	if n == 0 {
+	case requestLineState:
+		rl, n, err := parseRequestLine(data)
+		if err != nil {
+			return 0, err
+		}
+		if n == 0 {
+			return 0, nil
+		}
+		r.RequestLine = *rl
+		r.state = headersState
+		return n, nil
+	case headersState:
+		n, done, err := r.Headers.Parse(data)
+		if err != nil {
+			return 0, err
+		}
+		if done {
+			r.state = doneState
+		}
+		return n, nil
+	default:
 		return 0, nil
+
 	}
-	r.RequestLine = *rl
-	r.state = done
-	return n, nil
 
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	r := &Request{
-		state: initialized,
+		state:   requestLineState,
+		Headers: headers.NewHeaders(),
 	}
 
-	buf := make([]byte, bufferSize, bufferSize)
+	buffer := make([]byte, bufferSize, bufferSize)
 	buffLen := 0
 
-	for r.state != done {
-		n, err := reader.Read(buf[buffLen:])
+	for r.state != doneState {
+		n, err := reader.Read(buffer[buffLen:])
 		if err != nil {
-			if err == io.EOF {
-				r.state = done
-				break
+			if errors.Is(err, io.EOF) {
+				r.parse(buffer[:buffLen])
+				r.state = doneState
+				continue
 			}
 			return nil, err
 		}
 
 		buffLen += n
 
-		if len(buf[:buffLen]) == cap(buf) {
-			tmp := make([]byte, len(buf)*2, cap(buf)*2)
-			copy(tmp, buf[:])
-			buf = tmp
+		if buffLen >= cap(buffer) {
+			tmp := make([]byte, len(buffer)*2, cap(buffer)*2)
+			copy(tmp, buffer[:])
+			buffer = tmp
 		}
 
-		n, err = r.parse(buf[:buffLen])
+		n, err = r.parse(buffer[:buffLen])
 		if err != nil {
 			return nil, err
 		}
 
-		// copy(buf, buf[buffLen:n])
-		// buffLen -= n
-		// buf = buf[]
+		if n != 0 {
+			copy(buffer, buffer[n:])
+			buffLen -= n
+		}
 	}
 
 	return r, nil
@@ -119,7 +138,7 @@ func parseRequestLine(b []byte) (*RequestLine, int, error) {
 		Method:        string(method),
 		HttpVersion:   string(version[1]),
 		RequestTarget: string(rlPart[1]),
-	}, i, nil
+	}, i + len(CRLF), nil
 }
 
 func isValidHttpMethod(b []byte) bool {
