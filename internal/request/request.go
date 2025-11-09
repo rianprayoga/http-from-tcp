@@ -75,10 +75,11 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		Headers: headers.NewHeaders(),
 	}
 
-	buffer := make([]byte, bufferSize, bufferSize)
+	buffer := make([]byte, bufferSize)
 	buffLen := 0
 
 	for r.state != doneState {
+
 		n, err := reader.Read(buffer[buffLen:])
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -92,7 +93,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		buffLen += n
 
 		if buffLen >= cap(buffer) {
-			tmp := make([]byte, len(buffer)*2, cap(buffer)*2)
+			tmp := make([]byte, len(buffer)*2)
 			copy(tmp, buffer[:])
 			buffer = tmp
 		}
@@ -103,7 +104,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 
 		if n != 0 {
-			copy(buffer, buffer[n:])
+			tmp := make([]byte, len(buffer))
+			copy(tmp, buffer[n:])
+			buffer = tmp
 			buffLen -= n
 		}
 	}
