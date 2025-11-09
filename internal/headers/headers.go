@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 var ErrInvalidFormat = fmt.Errorf("invalid header format")
 var ErrInvalidKey = fmt.Errorf("invalid Key format")
+
+const CRLF = "\r\n"
 
 type Headers map[string]string
 
@@ -17,13 +20,13 @@ func NewHeaders() Headers {
 
 func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 
-	eol := bytes.Index(data, []byte("\r\n"))
+	eol := bytes.Index(data, []byte(CRLF))
 	if eol == -1 {
 		return 0, false, nil
 	}
 
 	if eol == 0 {
-		return 0, true, nil
+		return len(CRLF), true, nil
 	}
 
 	line := data[:eol]
@@ -55,4 +58,15 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	return eol + 2, false, nil
+}
+
+func (h Headers) Get(key string) (value *string, ok bool) {
+
+	lowercaseKey := strings.ToLower(key)
+	exstValue, ok := h[lowercaseKey]
+	if ok {
+		return &exstValue, ok
+	}
+
+	return nil, false
 }

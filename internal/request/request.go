@@ -7,18 +7,21 @@ import (
 	"httpfromtcp/internal/headers"
 	"io"
 	"slices"
+	"strconv"
 )
 
 var ErrWrongFormat = fmt.Errorf("mismatch format in request line")
 var ErrParsedAlready = fmt.Errorf("data  already parsed")
 var ErrWrongHttpMethod = fmt.Errorf("incorect http method")
-var CRLF = "\r\n"
+
+const CRLF = "\r\n"
 
 type ParserState int
 
 const (
 	requestLineState ParserState = iota
 	headersState
+	bodyState
 	doneState
 )
 const bufferSize = 8
@@ -73,11 +76,42 @@ func (r *Request) parse(data []byte) (int, error) {
 			return 0, err
 		}
 		if done {
-			r.state = doneState
+			r.state = bodyState
 		}
 		return n, nil
+	case bodyState:
+		v, ok := r.Headers.Get("Content-Length")
+
+		if v == nil {
+			r.state = doneState
+			return 0, nil
+		}
+
+		bodySize, err := strconv.Atoi(*v)
+		if err != nil {
+			return 0, err
+		}
+
+		if !ok || bodySize == 0 {
+			r.state = doneState
+			return 0, nil
+		}
+
+		r.Body = append(r.Body, data...)
+
+		if len(r.Body) > bodySize {
+			return 0, fmt.Errorf("reported content-lentgh was %d but body still parsed", bodySize)
+		}
+
+		if len(r.Body) == bodySize {
+			r.state = doneState
+			return len(data), nil
+		}
+
+		return len(data), nil
+
 	default:
-		return 0, nil
+		return 0, fmt.Errorf("unknown state")
 
 	}
 
