@@ -115,7 +115,7 @@ func TestRequestLineParse(t *testing.T) {
 
 	// Test: Empty Headers
 	reader = &chunkReader{
-		data:            "GET / HTTP/1.1\r\n",
+		data:            "GET / HTTP/1.1\r\n\r\n",
 		numBytesPerRead: 3,
 	}
 	r, err = RequestFromReader(reader)
@@ -137,8 +137,7 @@ func TestRequestLineParse(t *testing.T) {
 		data:            "GET / HTTP/1.1\r\nHost: localhost:2\r\n",
 		numBytesPerRead: 3,
 	}
-	r, err = RequestFromReader(reader)
-	require.NoError(t, err)
-	require.NotNil(t, r)
-	assert.Equal(t, "localhost:2", r.Headers["host"])
+	_, err = RequestFromReader(reader)
+	require.Error(t, err)
+
 }

@@ -11,7 +11,7 @@ import (
 
 var ErrWrongFormat = fmt.Errorf("mismatch format in request line")
 var ErrParsedAlready = fmt.Errorf("data  already parsed")
-var ErrWrongHttpMethod = fmt.Errorf("mismatch format in request line")
+var ErrWrongHttpMethod = fmt.Errorf("incorect http method")
 var CRLF = "\r\n"
 
 type ParserState int
@@ -36,9 +36,24 @@ type RequestLine struct {
 	Method        string
 }
 
+func (r *Request) parseLines(data []byte) (int, error) {
+	totalBytesParsed := 0
+	for r.state != doneState {
+		n, err := r.parse(data[totalBytesParsed:])
+		if err != nil {
+			return 0, err
+		}
+		totalBytesParsed += n
+		if n == 0 {
+			break
+		}
+	}
+	return totalBytesParsed, nil
+}
+
 func (r *Request) parse(data []byte) (int, error) {
 
-	switch state := r.state; state {
+	switch r.state {
 	case doneState:
 		return 0, ErrParsedAlready
 	case requestLineState:
@@ -83,9 +98,10 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		n, err := reader.Read(buffer[buffLen:])
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				r.parse(buffer[:buffLen])
-				r.state = doneState
-				continue
+				if r.state != doneState {
+					return nil, fmt.Errorf("incomplete request")
+				}
+				break
 			}
 			return nil, err
 		}
@@ -98,7 +114,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			buffer = tmp
 		}
 
-		n, err = r.parse(buffer[:buffLen])
+		n, err = r.parseLines(buffer[:buffLen])
 		if err != nil {
 			return nil, err
 		}
