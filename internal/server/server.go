@@ -5,24 +5,16 @@ import (
 	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
-	"io"
 	"net"
 	"strconv"
 	"sync/atomic"
 )
-
-type HandlerError struct {
-	StatusCode response.StatusCode
-	Message    string
-}
 
 type Server struct {
 	listener net.Listener
 	closed   atomic.Bool
 	handler  Handler
 }
-
-type Handler func(w io.Writer, req *request.Request) *HandlerError
 
 func Serve(port int, h Handler) (*Server, error) {
 
@@ -65,13 +57,19 @@ func (s *Server) handle(conn net.Conn) {
 
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
-
+		httpErr := &HandlerError{
+			StatusCode: response.InternalServerError,
+			Message:    "Unexpected occured",
+		}
+		httpErr.Write(conn)
+		return
 	}
 
 	var b bytes.Buffer
 	httpErr := s.handler(&b, req)
 	if httpErr != nil {
-		writeErrorResponse(conn, httpErr)
+		httpErr.Write(conn)
+		return
 	}
 
 	body := b.String()
@@ -79,13 +77,4 @@ func (s *Server) handle(conn net.Conn) {
 	response.WriteHeaders(conn, response.GetDefaultHeaders(len(body)))
 	fmt.Fprintf(conn, "%s", body)
 
-}
-
-func writeErrorResponse(w io.Writer, err *HandlerError) {
-	if err != nil {
-		response.WriteStatusLine(w, err.StatusCode)
-		response.WriteHeaders(w, response.GetDefaultHeaders(len(err.Message)))
-		fmt.Fprintf(w, "%s", err.Message)
-		return
-	}
 }
