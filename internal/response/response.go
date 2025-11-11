@@ -19,9 +19,9 @@ const CRLF = "\r\n"
 func GetDefaultHeaders(contentLen int) headers.Headers {
 	h := headers.Headers{}
 
-	h["Content-Length"] = fmt.Sprintf("%d", contentLen)
-	h["Connection"] = "close"
-	h["Content-Type"] = "text/plain"
+	h.Set("Content-Length", fmt.Sprintf("%d", contentLen))
+	h.Set("Connection", "close")
+	h.Set("Content-Type", "text/plain")
 
 	return h
 }

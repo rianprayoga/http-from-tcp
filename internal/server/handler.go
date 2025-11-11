@@ -18,4 +18,4 @@ func (h *HandlerError) Write(w io.Writer) {
 	fmt.Fprintf(w, "%s", h.Message)
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request)

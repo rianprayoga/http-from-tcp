@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
@@ -16,7 +15,7 @@ type Server struct {
 	handler  Handler
 }
 
-func Serve(port int, h Handler) (*Server, error) {
+func Serve(port int, nh Handler) (*Server, error) {
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%s", strconv.Itoa(port)))
 	if err != nil {
@@ -25,7 +24,7 @@ func Serve(port int, h Handler) (*Server, error) {
 
 	s := &Server{
 		listener: l,
-		handler:  h,
+		handler:  nh,
 	}
 	s.closed.Store(false)
 
@@ -65,16 +64,20 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 
-	var b bytes.Buffer
-	httpErr := s.handler(&b, req)
-	if httpErr != nil {
-		httpErr.Write(conn)
-		return
-	}
+	s.handler(&response.Writer{
+		IoWriter: conn,
+	}, req)
 
-	body := b.String()
-	response.WriteStatusLine(conn, response.Ok)
-	response.WriteHeaders(conn, response.GetDefaultHeaders(len(body)))
-	fmt.Fprintf(conn, "%s", body)
+	// var b bytes.Buffer
+	// httpErr := s.handler(&b, req)
+	// if httpErr != nil {
+	// 	httpErr.Write(conn)
+	// 	return
+	// }
+
+	// body := b.String()
+	// response.WriteStatusLine(conn, response.Ok)
+	// response.WriteHeaders(conn, response.GetDefaultHeaders(len(body)))
+	// fmt.Fprintf(conn, "%s", body)
 
 }

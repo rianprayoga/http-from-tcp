@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
 	"httpfromtcp/internal/server"
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -15,32 +15,39 @@ const port = 42069
 
 func main() {
 
-	w := func(w io.Writer, req *request.Request) *server.HandlerError {
+	template := "<html><head><title>%s</title>" +
+		"</head><body><h1>%s</h1><p>%s</p>" +
+		"</body></html>"
+
+	nw := func(w *response.Writer, req *request.Request) {
 		switch req.RequestLine.RequestTarget {
 		case "/yourproblem":
-			return &server.HandlerError{
-				StatusCode: response.BadRequest,
-				Message:    "Your problem is not my problem\n",
-			}
+			body := fmt.Sprintf(template, "400 Bad Request", "Bad Request", "Your request honestly kinda sucked.")
+			w.WriteStatusLine(response.BadRequest)
+			h := response.GetDefaultHeaders(len(body))
+			h.Set("Content-Type", "text/html")
+			w.WriteHeaders(h)
+			w.WriteBody([]byte(body))
+
 		case "/myproblem":
-			return &server.HandlerError{
-				StatusCode: response.InternalServerError,
-				Message:    "Woopsie, my bad\n",
-			}
+			body := fmt.Sprintf(template, "500 Internal Server Error", "Internal Server Error", "Okay, you know what? This one is on me.")
+			w.WriteStatusLine(response.InternalServerError)
+			h := response.GetDefaultHeaders(len(body))
+			h.Set("Content-Type", "text/html")
+			w.WriteHeaders(h)
+			w.WriteBody([]byte(body))
 		default:
-			m := "All good, frfr\n"
-			_, err := w.Write([]byte(m))
-			if err != nil {
-				return &server.HandlerError{
-					StatusCode: response.InternalServerError,
-					Message:    "Unhandled error occured\n",
-				}
-			}
-			return nil
+			body := fmt.Sprintf(template, "200 OK", "Success!", "Your request was an absolute banger.")
+			w.WriteStatusLine(response.Ok)
+			h := response.GetDefaultHeaders(len(body))
+			h.Set("Content-Type", "text/html")
+			w.WriteHeaders(h)
+			w.WriteBody([]byte(body))
+
 		}
 	}
 
-	server, err := server.Serve(port, w)
+	server, err := server.Serve(port, nw)
 	if err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}

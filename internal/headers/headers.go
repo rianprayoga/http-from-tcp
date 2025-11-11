@@ -70,3 +70,9 @@ func (h Headers) Get(key string) (value *string, ok bool) {
 
 	return nil, false
 }
+
+func (h Headers) Set(key string, val string) {
+
+	lowercaseKey := strings.ToLower(key)
+	h[lowercaseKey] = val
+}
