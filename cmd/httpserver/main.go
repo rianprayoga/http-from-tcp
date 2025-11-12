@@ -20,31 +20,18 @@ func main() {
 		"</body></html>"
 
 	nw := func(w *response.Writer, req *request.Request) {
-		switch req.RequestLine.RequestTarget {
-		case "/yourproblem":
-			body := fmt.Sprintf(template, "400 Bad Request", "Bad Request", "Your request honestly kinda sucked.")
-			w.WriteStatusLine(response.BadRequest)
-			h := response.GetDefaultHeaders(len(body))
-			h.Set("Content-Type", "text/html")
-			w.WriteHeaders(h)
-			w.WriteBody([]byte(body))
 
-		case "/myproblem":
-			body := fmt.Sprintf(template, "500 Internal Server Error", "Internal Server Error", "Okay, you know what? This one is on me.")
-			w.WriteStatusLine(response.InternalServerError)
-			h := response.GetDefaultHeaders(len(body))
-			h.Set("Content-Type", "text/html")
-			w.WriteHeaders(h)
-			w.WriteBody([]byte(body))
-		default:
-			body := fmt.Sprintf(template, "200 OK", "Success!", "Your request was an absolute banger.")
-			w.WriteStatusLine(response.Ok)
-			h := response.GetDefaultHeaders(len(body))
-			h.Set("Content-Type", "text/html")
-			w.WriteHeaders(h)
-			w.WriteBody([]byte(body))
+		Urproblem(fmt.Sprintf(template, "400 Bad Request", "Bad Request", "Your request honestly kinda sucked."), w, req)
+		MyProblem(fmt.Sprintf(template, "500 Internal Server Error", "Internal Server Error", "Okay, you know what? This one is on me."), w, req)
+		HttpBin(w, req)
 
-		}
+		body := fmt.Sprintf(template, "200 OK", "Success!", "Your request was an absolute banger.")
+		w.WriteStatusLine(response.Ok)
+		h := response.GetDefaultHeaders(len(body))
+		h.Set("Content-Type", "text/html")
+		w.WriteHeaders(h)
+		w.WriteBody([]byte(body))
+
 	}
 
 	server, err := server.Serve(port, nw)

@@ -1,7 +1,10 @@
 package request
 
 import (
+	"fmt"
 	"io"
+	"log"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -32,6 +35,34 @@ func (cr *chunkReader) Read(p []byte) (n int, err error) {
 	cr.pos += n
 
 	return n, nil
+}
+
+// res, err := http.Get(fmt.Sprintf("httpbin.org%s", after))
+// 		if err != nil {
+// 			return err
+// 		}
+// 		defer res.Body.Close()
+
+func TestWhat(t *testing.T) {
+	//https://httpbin.org/stream/100
+	res, err := http.Get(fmt.Sprintf("https://httpbin.org%s", "/stream/100"))
+
+	if err != nil {
+		// return err
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	buffer := make([]byte, 1024)
+
+	for {
+		n, err := res.Body.Read(buffer)
+		if err != nil {
+			break
+		}
+		log.Print(n)
+	}
+
 }
 
 func TestRequestLineParse(t *testing.T) {
