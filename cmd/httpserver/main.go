@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -15,22 +16,28 @@ const port = 42069
 
 func main() {
 
-	template := "<html><head><title>%s</title>" +
-		"</head><body><h1>%s</h1><p>%s</p>" +
-		"</body></html>"
-
 	nw := func(w *response.Writer, req *request.Request) {
+		switch req.RequestLine.RequestTarget {
+		case "/yourproblem":
+			Urproblem(w, req)
+			return
+		case "/myproblem":
+			MyProblem(w, req)
+			return
 
-		Urproblem(fmt.Sprintf(template, "400 Bad Request", "Bad Request", "Your request honestly kinda sucked."), w, req)
-		MyProblem(fmt.Sprintf(template, "500 Internal Server Error", "Internal Server Error", "Okay, you know what? This one is on me."), w, req)
-		HttpBin(w, req)
+		default:
+			if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin") {
+				HttpBin(w, req)
+				return
+			}
 
-		body := fmt.Sprintf(template, "200 OK", "Success!", "Your request was an absolute banger.")
-		w.WriteStatusLine(response.Ok)
-		h := response.GetDefaultHeaders(len(body))
-		h.Set("Content-Type", "text/html")
-		w.WriteHeaders(h)
-		w.WriteBody([]byte(body))
+			body := fmt.Sprintf(template, "200 OK", "Success!", "Your request was an absolute banger.")
+			w.WriteStatusLine(response.Ok)
+			h := response.GetDefaultHeaders(len(body))
+			h.Set("Content-Type", "text/html")
+			w.WriteHeaders(h)
+			w.WriteBody([]byte(body))
+		}
 
 	}
 

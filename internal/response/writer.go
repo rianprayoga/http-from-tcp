@@ -43,14 +43,21 @@ func (w *Writer) WriteBody(p []byte) (int, error) {
 
 func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 
-	n, err := w.IoWriter.Write(p)
+	hex := fmt.Sprintf("%x", len(p))
+	b := fmt.Sprintf("%s%s%s%s", hex, CRLF, p, CRLF)
+	n, err := w.IoWriter.Write([]byte(b))
 	if err != nil {
 		return 0, err
 	}
-	fmt.Sprintf("%x", n)
-	return 0, nil
+
+	return n, nil
 }
 
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
-	return 0, nil
+	b := fmt.Sprintf("%d%s%s", 0, CRLF, CRLF)
+	n, err := w.IoWriter.Write(([]byte(b)))
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }

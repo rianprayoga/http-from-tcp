@@ -6,7 +6,7 @@ import (
 	"io"
 )
 
-type StatusCode int16
+type StatusCode int
 
 const (
 	Ok                  StatusCode = 200

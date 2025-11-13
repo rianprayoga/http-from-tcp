@@ -39,13 +39,18 @@ func (s *Server) Close() error {
 	if err != nil {
 		return err
 	}
-	s.closed.Store(true)
+
+	defer s.closed.Store(true)
 	return nil
 }
 
 func (s *Server) listen() {
 
-	for !s.closed.Load() {
+	for {
+		if s.closed.Load() {
+			break
+		}
+
 		conn, _ := s.listener.Accept()
 		go s.handle(conn)
 	}
@@ -67,17 +72,5 @@ func (s *Server) handle(conn net.Conn) {
 	s.handler(&response.Writer{
 		IoWriter: conn,
 	}, req)
-
-	// var b bytes.Buffer
-	// httpErr := s.handler(&b, req)
-	// if httpErr != nil {
-	// 	httpErr.Write(conn)
-	// 	return
-	// }
-
-	// body := b.String()
-	// response.WriteStatusLine(conn, response.Ok)
-	// response.WriteHeaders(conn, response.GetDefaultHeaders(len(body)))
-	// fmt.Fprintf(conn, "%s", body)
 
 }
