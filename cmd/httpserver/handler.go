@@ -1,13 +1,12 @@
 package main
 
 import (
-	"errors"
+	"crypto/sha256"
 	"fmt"
 	"httpfromtcp/internal/headers"
 	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
 	"httpfromtcp/internal/server"
-	"io"
 	"net/http"
 	"strings"
 )
@@ -61,43 +60,39 @@ func HttpBin(w *response.Writer, req *request.Request) {
 			return
 		}
 
-		buffer := make([]byte, 32)
-
 		w.WriteStatusLine(http.StatusOK)
 
 		h := headers.NewHeaders()
 		h.Set("Content-Type", "text/plain")
 		h.Set("Transfer-Encoding", "chunked")
-
+		h.Set("Trailer", "X-Content-SHA256, X-Content-Length")
 		w.WriteHeaders(h)
 
+		body := []byte{}
+
 		for {
+			buffer := make([]byte, 32)
 			n, err := res.Body.Read(buffer)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				httpErr := server.NewInternalServerError()
-				httpErr.Write(w.IoWriter)
-				return
+				break
 			}
 
-			_, err = w.WriteChunkedBody(buffer[:n])
-			if err != nil {
-				httpErr := server.NewInternalServerError()
-				httpErr.Write(w.IoWriter)
-				return
-			}
-
+			body = append(body, buffer[:n]...)
+			w.WriteChunkedBody(buffer[:n])
 		}
 
-		_, err = w.WriteChunkedBodyDone()
-		if err != nil {
-			httpErr := server.NewInternalServerError()
-			httpErr.Write(w.IoWriter)
-			return
+		w.WriteChunkedBodyDone()
+
+		sha := sha256.Sum256(body)
+		shaStr := ""
+		for _, s := range sha {
+			shaStr += fmt.Sprintf("%x", s)
 		}
 
+		t := headers.NewHeaders()
+		t.Set("X-Content-SHA256", shaStr)
+		t.Set("X-Content-Length", fmt.Sprintf("%d", len(body)))
+		w.WriteTrailers(t)
 		return
 	}
 }

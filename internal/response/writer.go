@@ -54,10 +54,19 @@ func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
 }
 
 func (w *Writer) WriteChunkedBodyDone() (int, error) {
-	b := fmt.Sprintf("%d%s%s", 0, CRLF, CRLF)
+	b := fmt.Sprintf("%d%s", 0, CRLF)
 	n, err := w.IoWriter.Write(([]byte(b)))
 	if err != nil {
 		return 0, err
 	}
 	return n, nil
+}
+
+func (w *Writer) WriteTrailers(h headers.Headers) error {
+
+	err := WriteHeaders(w.IoWriter, h)
+	if err != nil {
+		return err
+	}
+	return nil
 }
