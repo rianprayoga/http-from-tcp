@@ -8,6 +8,7 @@ import (
 	"httpfromtcp/internal/response"
 	"httpfromtcp/internal/server"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -95,4 +96,20 @@ func HttpBin(w *response.Writer, req *request.Request) {
 		w.WriteTrailers(t)
 		return
 	}
+}
+
+func GetVideo(w *response.Writer, req *request.Request) {
+
+	h := headers.NewHeaders()
+	h.Set("Content-Type", "video/mp4")
+
+	w.WriteStatusLine(response.Ok)
+	w.WriteHeaders(h)
+
+	f, err := os.ReadFile("../../assets/vim.mp4")
+	if err != nil {
+		server.NewInternalServerError().Write(w.IoWriter)
+		return
+	}
+	w.WriteBody(f)
 }

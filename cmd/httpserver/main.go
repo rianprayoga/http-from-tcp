@@ -25,6 +25,9 @@ func main() {
 			MyProblem(w, req)
 			return
 
+		case "/video":
+			GetVideo(w, req)
+			return
 		default:
 			if strings.HasPrefix(req.RequestLine.RequestTarget, "/httpbin") {
 				HttpBin(w, req)
